@@ -18,6 +18,7 @@ Each folder contains the full working code for a corresponding blog post.
 | [github-actions-oidc](./github-actions-oidc/) | [GitHub Actions OIDC](https://moabukar.co.uk/blog/github-actions-oidc) | Authenticate to AWS without storing secrets |
 | [localstack-deep-dive](./localstack-deep-dive/) | [LocalStack Deep Dive](https://moabukar.co.uk/blog/localstack-deep-dive) | Run AWS services locally for development and testing |
 | [packer-ami-production](./packer-ami-production/) | [Packer AMI for Production](https://moabukar.co.uk/blog/packer-ami-production) | Build production-ready AMIs with Packer |
+| [rds-proxy-lambda](./rds-proxy-lambda/) | [RDS Proxy for Lambda](https://moabukar.co.uk/blog/rds-proxy-lambda-connection-pooling) | Connection pooling for Lambda-RDS |
 | [pod-topology-spread-constraints](./pod-topology-spread-constraints/) | [Pod Topology Spread Constraints](https://moabukar.co.uk/blog/pod-topology-spread-constraints) | Distribute pods across nodes and zones |
 | [self-hosted-gitlab-kubernetes](./self-hosted-gitlab-kubernetes/) | [Self-Hosted GitLab on Kubernetes](https://moabukar.co.uk/blog/self-hosted-gitlab-kubernetes) | Deploy GitLab on AKS with Azure SQL, Redis, and Blob Storage |
 | [terraform-best-practices-part-1](./terraform-best-practices-part-1/) | [Terraform Best Practices Part 1](https://moabukar.co.uk/blog/terraform-best-practices-part-1) | Project structure, state management, modules |

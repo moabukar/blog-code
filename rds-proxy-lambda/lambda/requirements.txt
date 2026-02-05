@@ -1,0 +1,4 @@
+# Lambda layer requirements
+# For production, build a Lambda Layer with these dependencies
+
+psycopg2-binary>=2.9.0
