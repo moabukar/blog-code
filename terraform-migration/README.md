@@ -2,7 +2,7 @@
 
 Scripts and examples for migrating Terraform from 0.11 through to modern versions.
 
-📖 **Blog Post:** [Terraform 0.11 to 1.11 Migration - The Full Journey](https://moabukar.co.uk/blog/terraform-0.11-to-1.11-migration)
+📖 **Blog Post:** [Terraform 0.11 to 1.11 Migration - The Full Journey](https://moabukar.co.uk/blog/terraform-011-to-111-migration)
 
 ## Contents
 
