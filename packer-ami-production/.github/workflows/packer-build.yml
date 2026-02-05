@@ -1,0 +1,127 @@
+# .github/workflows/packer-build.yml
+name: Build AMI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'packer/**'
+      - 'src/**'  # Rebuild AMI when application code changes
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version tag (defaults to git SHA)'
+        required: false
+
+env:
+  AWS_REGION: eu-west-1
+  PACKER_VERSION: 1.9.4
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write  # Required for OIDC
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::123456789012:role/GitHubActionsPackerRole
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup Packer
+        uses: hashicorp/setup-packer@main
+        with:
+          version: ${{ env.PACKER_VERSION }}
+
+      - name: Set version
+        id: version
+        run: |
+          if [ -n "${{ github.event.inputs.version }}" ]; then
+            echo "version=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+          else
+            echo "version=${GITHUB_SHA::8}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Build application artifact
+        run: |
+          # Build your application here
+          make build VERSION=${{ steps.version.outputs.version }}
+          
+          # Upload to S3 for Packer to retrieve
+          aws s3 cp dist/myapp.tar.gz \
+            s3://mycompany-artifacts/myapp/${{ steps.version.outputs.version }}/myapp.tar.gz
+          
+          # Upload checksum
+          sha256sum dist/myapp.tar.gz > dist/myapp.tar.gz.sha256
+          aws s3 cp dist/myapp.tar.gz.sha256 \
+            s3://mycompany-artifacts/myapp/${{ steps.version.outputs.version }}/myapp.tar.gz.sha256
+
+      - name: Packer init
+        working-directory: packer
+        run: packer init .
+
+      - name: Packer validate
+        working-directory: packer
+        run: |
+          packer validate \
+            -var="app_version=${{ steps.version.outputs.version }}" \
+            -var="vpc_id=${{ secrets.BUILD_VPC_ID }}" \
+            -var="subnet_id=${{ secrets.BUILD_SUBNET_ID }}" \
+            app-ami.pkr.hcl
+
+      - name: Packer build
+        working-directory: packer
+        run: |
+          packer build \
+            -var="app_version=${{ steps.version.outputs.version }}" \
+            -var="vpc_id=${{ secrets.BUILD_VPC_ID }}" \
+            -var="subnet_id=${{ secrets.BUILD_SUBNET_ID }}" \
+            -color=false \
+            app-ami.pkr.hcl
+
+      - name: Extract AMI ID
+        id: ami
+        working-directory: packer
+        run: |
+          AMI_ID=$(jq -r '.builds[-1].artifact_id | split(":")[1]' manifest.json)
+          echo "ami_id=${AMI_ID}" >> $GITHUB_OUTPUT
+          echo "AMI created: ${AMI_ID}"
+
+      - name: Store AMI ID
+        run: |
+          # Store AMI ID in Parameter Store for Terraform
+          aws ssm put-parameter \
+            --name "/myapp/ami/latest" \
+            --value "${{ steps.ami.outputs.ami_id }}" \
+            --type String \
+            --overwrite
+          
+          # Also store with version tag
+          aws ssm put-parameter \
+            --name "/myapp/ami/${{ steps.version.outputs.version }}" \
+            --value "${{ steps.ami.outputs.ami_id }}" \
+            --type String \
+            --overwrite
+
+    outputs:
+      ami_id: ${{ steps.ami.outputs.ami_id }}
+      version: ${{ steps.version.outputs.version }}
+
+  # Optional: Trigger deployment to staging
+  deploy-staging:
+    needs: build
+    runs-on: ubuntu-latest
+    environment: staging
+    steps:
+      - name: Trigger Terraform deployment
+        run: |
+          # Trigger your deployment pipeline
+          gh workflow run terraform-deploy.yml \
+            -f environment=staging \
+            -f ami_id=${{ needs.build.outputs.ami_id }}
