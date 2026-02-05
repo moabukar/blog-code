@@ -1,0 +1,16 @@
+# Azure Files Premium Storage Class for Gitaly
+# High IOPS required for Git operations
+
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: azurefile-premium
+provisioner: file.csi.azure.com
+parameters:
+  skuName: Premium_LRS
+  protocol: nfs
+reclaimPolicy: Retain
+volumeBindingMode: Immediate
+allowVolumeExpansion: true
+mountOptions:
+  - nconnect=4

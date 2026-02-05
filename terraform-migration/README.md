@@ -9,11 +9,14 @@ Scripts and examples for migrating Terraform from 0.11 through to modern version
 ```
 terraform-migration/
 ├── scripts/
-│   ├── upgrade-0.12.sh       # 0.11 → 0.12 upgrade
-│   └── upgrade-0.13.sh       # 0.12 → 0.13 upgrade
+│   ├── upgrade-0.12.sh           # 0.11 → 0.12 upgrade
+│   ├── upgrade-0.13.sh           # 0.12 → 0.13 upgrade
+│   └── s3-migration-import.sh    # AWS Provider 3.x → 4.x S3 imports
 ├── examples/
-│   ├── versions.tf           # Required providers template
-│   └── syntax-comparison.tf  # 0.11 vs 0.12+ syntax
+│   ├── versions.tf               # Required providers template
+│   ├── syntax-comparison.tf      # 0.11 vs 0.12+ syntax
+│   └── s3-bucket-old-vs-new.tf   # S3 bucket split example
+├── migration-checklist.md        # Pre/post migration checklist
 └── README.md
 ```
 

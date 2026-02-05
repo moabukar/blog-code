@@ -9,9 +9,14 @@ Deploy GitLab on AKS with Azure SQL, Redis, and Blob Storage.
 ```
 self-hosted-gitlab-kubernetes/
 ├── helm/
-│   └── values.yaml           # GitLab Helm chart config
+│   ├── values.yaml               # Basic GitLab Helm config
+│   └── values-production.yaml    # Full production config
 ├── terraform/
-│   └── main.tf               # Azure infrastructure
+│   ├── main.tf                   # Basic infrastructure
+│   └── azure-resources.tf        # Full Azure resources (PostgreSQL, Redis, Storage)
+├── kubernetes/
+│   ├── secrets-template.yaml     # Kubernetes secrets template
+│   └── storage-class.yaml        # Azure Files Premium storage class
 └── README.md
 ```
 

@@ -1,0 +1,216 @@
+# values-production.yaml
+# Full production GitLab Helm configuration for AKS with Azure services
+
+global:
+  # Domain configuration
+  hosts:
+    domain: yourcompany.com
+    gitlab:
+      name: gitlab.yourcompany.com
+      https: true
+    registry:
+      name: registry.yourcompany.com
+      https: true
+    minio:
+      enabled: false  # We use Azure Blob instead
+    
+  # Ingress configuration
+  ingress:
+    class: nginx
+    annotations:
+      kubernetes.io/tls-acme: "true"
+      cert-manager.io/cluster-issuer: letsencrypt-prod
+      nginx.ingress.kubernetes.io/proxy-body-size: "0"
+      nginx.ingress.kubernetes.io/proxy-read-timeout: "900"
+      nginx.ingress.kubernetes.io/proxy-connect-timeout: "900"
+    configureCertmanager: false
+    tls:
+      enabled: true
+      secretName: gitlab-tls
+
+  time_zone: Europe/London
+
+  # Email configuration
+  smtp:
+    enabled: true
+    address: smtp.sendgrid.net
+    port: 587
+    authentication: plain
+    user_name: apikey
+    password:
+      secret: gitlab-smtp-password
+      key: password
+    starttls_auto: true
+
+  # ============================================
+  # EXTERNAL POSTGRESQL (Azure SQL)
+  # ============================================
+  psql:
+    host: gitlab-postgres-prod.postgres.database.azure.com
+    port: 5432
+    database: gitlab_production
+    username: gitlab
+    password:
+      secret: gitlab-postgresql-password
+      key: postgresql-password
+    ssl:
+      enabled: true
+    
+  # ============================================
+  # EXTERNAL REDIS (Azure Cache)
+  # ============================================
+  redis:
+    host: gitlab-redis-prod.redis.cache.windows.net
+    port: 6380
+    password:
+      enabled: true
+      secret: gitlab-redis-password
+      key: redis-password
+    scheme: rediss  # SSL
+
+  # ============================================
+  # OBJECT STORAGE (Azure Blob)
+  # ============================================
+  minio:
+    enabled: false
+
+  appConfig:
+    lfs:
+      enabled: true
+      proxy_download: true
+      bucket: gitlab-lfs
+      connection:
+        secret: gitlab-rails-storage
+        key: connection
+
+    artifacts:
+      enabled: true
+      proxy_download: true
+      bucket: gitlab-artifacts
+      connection:
+        secret: gitlab-rails-storage
+        key: connection
+
+    uploads:
+      enabled: true
+      proxy_download: true
+      bucket: gitlab-uploads
+      connection:
+        secret: gitlab-rails-storage
+        key: connection
+
+    packages:
+      enabled: true
+      proxy_download: true
+      bucket: gitlab-packages
+      connection:
+        secret: gitlab-rails-storage
+        key: connection
+
+    backups:
+      bucket: gitlab-backups
+      tmpBucket: gitlab-backups-tmp
+
+    object_store:
+      enabled: true
+      proxy_download: true
+      connection:
+        secret: gitlab-rails-storage
+        key: connection
+
+# ============================================
+# DISABLE BUNDLED COMPONENTS
+# ============================================
+postgresql:
+  install: false
+
+redis:
+  install: false
+
+minio:
+  install: false
+
+certmanager:
+  install: false
+
+nginx-ingress:
+  enabled: false
+
+prometheus:
+  install: false
+
+# ============================================
+# GITLAB COMPONENTS
+# ============================================
+gitlab:
+  webservice:
+    replicaCount: 2
+    minReplicas: 2
+    maxReplicas: 10
+    resources:
+      requests:
+        cpu: 900m
+        memory: 2.5G
+      limits:
+        cpu: 2
+        memory: 4G
+    workerProcesses: 2
+
+  sidekiq:
+    replicas: 2
+    minReplicas: 2
+    maxReplicas: 10
+    resources:
+      requests:
+        cpu: 500m
+        memory: 2G
+      limits:
+        cpu: 2
+        memory: 4G
+    pods:
+      - name: all-in-1
+        concurrency: 25
+
+  gitaly:
+    persistence:
+      enabled: true
+      size: 500Gi
+      storageClass: azurefile-premium
+    resources:
+      requests:
+        cpu: 300m
+        memory: 1.5G
+      limits:
+        cpu: 2
+        memory: 4G
+
+  gitlab-shell:
+    replicaCount: 2
+    minReplicas: 2
+    maxReplicas: 4
+
+  toolbox:
+    enabled: true
+    backups:
+      cron:
+        enabled: true
+        schedule: "0 2 * * *"
+        persistence:
+          enabled: true
+          size: 100Gi
+          storageClass: azurefile-premium
+
+registry:
+  enabled: true
+  replicas: 2
+  hpa:
+    minReplicas: 2
+    maxReplicas: 5
+  storage:
+    secret: gitlab-registry-storage
+    key: config
+
+shared-secrets:
+  enabled: true
+  rbac:
+    create: true
