@@ -1,0 +1,12 @@
+# Custom Act runner image with additional tools
+FROM catthehacker/ubuntu:act-22.04
+
+# Add your specific tools
+RUN apt-get update && apt-get install -y \
+    postgresql-client \
+    redis-tools \
+    && rm -rf /var/lib/apt/lists/*
+
+# Pre-install language runtimes
+RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
+    && apt-get install -y nodejs

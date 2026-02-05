@@ -1,0 +1,61 @@
+# Kyverno policy to enforce image signature verification
+# Install Kyverno first: kubectl create -f https://raw.githubusercontent.com/kyverno/kyverno/main/config/install.yaml
+
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: verify-image-signatures
+  annotations:
+    policies.kyverno.io/title: Verify Image Signatures
+    policies.kyverno.io/category: Supply Chain Security
+    policies.kyverno.io/description: >-
+      Verify that container images are signed with Cosign before deployment.
+spec:
+  validationFailureAction: Enforce  # Use 'Audit' to test without blocking
+  webhookTimeoutSeconds: 30
+  rules:
+    - name: verify-signature
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+      verifyImages:
+        - imageReferences:
+            - "ghcr.io/myorg/*"
+          attestors:
+            - entries:
+                - keyless:
+                    subject: "https://github.com/myorg/*"
+                    issuer: "https://token.actions.githubusercontent.com"
+                    rekor:
+                      url: https://rekor.sigstore.dev
+          mutateDigest: true  # Replace tags with digests
+          verifyDigest: true
+---
+# Alternative: Key-based verification
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: verify-image-signatures-key
+  annotations:
+    policies.kyverno.io/title: Verify Image Signatures (Key-based)
+spec:
+  validationFailureAction: Audit
+  rules:
+    - name: verify-signature-key
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+      verifyImages:
+        - imageReferences:
+            - "docker.io/myorg/*"
+          attestors:
+            - entries:
+                - keys:
+                    publicKeys: |-
+                      -----BEGIN PUBLIC KEY-----
+                      YOUR_COSIGN_PUBLIC_KEY_HERE
+                      -----END PUBLIC KEY-----

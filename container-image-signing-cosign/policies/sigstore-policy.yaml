@@ -1,0 +1,43 @@
+# Sigstore Policy Controller policy
+# Install first:
+#   helm repo add sigstore https://sigstore.github.io/helm-charts
+#   helm install policy-controller sigstore/policy-controller -n sigstore-system --create-namespace
+
+apiVersion: policy.sigstore.dev/v1beta1
+kind: ClusterImagePolicy
+metadata:
+  name: require-signed-images
+spec:
+  images:
+    - glob: "ghcr.io/myorg/**"
+  authorities:
+    - keyless:
+        identities:
+          - issuer: "https://token.actions.githubusercontent.com"
+            subjectRegExp: "https://github.com/myorg/.*"
+---
+# Require SBOM attestation
+apiVersion: policy.sigstore.dev/v1beta1
+kind: ClusterImagePolicy
+metadata:
+  name: require-sbom
+spec:
+  images:
+    - glob: "ghcr.io/myorg/**"
+  authorities:
+    - keyless:
+        identities:
+          - issuer: "https://token.actions.githubusercontent.com"
+            subjectRegExp: "https://github.com/myorg/.*"
+  policy:
+    type: cue
+    data: |
+      predicateType: "https://spdx.dev/Document"
+---
+# Namespace-level enforcement
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: production
+  labels:
+    policy.sigstore.dev/include: "true"  # Enable policy enforcement

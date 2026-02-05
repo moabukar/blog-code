@@ -1,0 +1,128 @@
+# values.yaml - GitLab Helm chart configuration for AKS
+# Reference: https://docs.gitlab.com/charts/
+
+global:
+  edition: ee
+  hosts:
+    domain: yourcompany.com
+    gitlab:
+      name: gitlab.yourcompany.com
+      https: true
+    registry:
+      name: registry.yourcompany.com
+      https: true
+  
+  # External PostgreSQL (Azure SQL)
+  psql:
+    host: gitlab-postgres-prod.postgres.database.azure.com
+    port: 5432
+    database: gitlab_production
+    username: gitlab
+    password:
+      secret: gitlab-postgres-secret
+      key: password
+  
+  # External Redis (Azure Cache)
+  redis:
+    host: gitlab-redis-prod.redis.cache.windows.net
+    port: 6380
+    auth:
+      enabled: true
+      secret: gitlab-redis-secret
+      key: password
+    ssl: true
+  
+  # Ingress
+  ingress:
+    configureCertmanager: true
+    class: nginx
+    annotations:
+      cert-manager.io/cluster-issuer: letsencrypt-prod
+    tls:
+      enabled: true
+  
+  # Object Storage (Azure Blob)
+  appConfig:
+    object_store:
+      enabled: true
+      proxy_download: true
+      connection:
+        secret: gitlab-azure-storage
+        key: connection
+    lfs:
+      bucket: gitlab-lfs
+      connection:
+        secret: gitlab-azure-storage
+        key: connection
+    artifacts:
+      bucket: gitlab-artifacts
+      connection:
+        secret: gitlab-azure-storage
+        key: connection
+    uploads:
+      bucket: gitlab-uploads
+      connection:
+        secret: gitlab-azure-storage
+        key: connection
+    packages:
+      bucket: gitlab-packages
+      connection:
+        secret: gitlab-azure-storage
+        key: connection
+    backups:
+      bucket: gitlab-backups
+      tmpBucket: gitlab-tmp
+
+# Disable bundled services (using external)
+postgresql:
+  install: false
+
+redis:
+  install: false
+
+# GitLab components
+gitlab:
+  webservice:
+    replicas: 2
+    resources:
+      requests:
+        cpu: 500m
+        memory: 2Gi
+      limits:
+        cpu: 2
+        memory: 4Gi
+  
+  sidekiq:
+    replicas: 2
+    resources:
+      requests:
+        cpu: 250m
+        memory: 1Gi
+      limits:
+        cpu: 1
+        memory: 2Gi
+  
+  gitaly:
+    persistence:
+      enabled: true
+      storageClass: azurefile-premium
+      size: 100Gi
+
+# Registry
+registry:
+  enabled: true
+  storage:
+    secret: gitlab-azure-storage
+    key: registry
+
+# Runner (optional - can be separate deployment)
+gitlab-runner:
+  install: false
+
+# Cert-manager
+certmanager:
+  install: false  # Already installed in cluster
+
+# Prometheus (disable if using external monitoring)
+prometheus:
+  install: false
