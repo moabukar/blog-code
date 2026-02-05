@@ -1,0 +1,76 @@
+# ReferenceGrant - Cross-namespace backend access
+# By default, HTTPRoutes can only reference backends in the same namespace
+# ReferenceGrant allows controlled cross-namespace access
+
+# Allow routes from 'infra' namespace to reference Services in 'backend-services'
+apiVersion: gateway.networking.k8s.io/v1beta1
+kind: ReferenceGrant
+metadata:
+  name: allow-infra-routes
+  namespace: backend-services  # Target namespace (where the backends are)
+spec:
+  from:
+  - group: gateway.networking.k8s.io
+    kind: HTTPRoute
+    namespace: infra  # Source namespace (where routes are)
+  to:
+  - group: ""  # Core API group
+    kind: Service
+
+---
+# Allow specific team namespaces to access shared services
+apiVersion: gateway.networking.k8s.io/v1beta1
+kind: ReferenceGrant
+metadata:
+  name: allow-team-access
+  namespace: shared-services
+spec:
+  from:
+  - group: gateway.networking.k8s.io
+    kind: HTTPRoute
+    namespace: team-a
+  - group: gateway.networking.k8s.io
+    kind: HTTPRoute
+    namespace: team-b
+  - group: gateway.networking.k8s.io
+    kind: HTTPRoute
+    namespace: team-c
+  to:
+  - group: ""
+    kind: Service
+
+---
+# Allow Gateway to reference Secrets in another namespace (for TLS)
+apiVersion: gateway.networking.k8s.io/v1beta1
+kind: ReferenceGrant
+metadata:
+  name: allow-gateway-secrets
+  namespace: cert-manager  # Where TLS secrets are stored
+spec:
+  from:
+  - group: gateway.networking.k8s.io
+    kind: Gateway
+    namespace: infra
+  to:
+  - group: ""
+    kind: Secret
+
+---
+# Example: HTTPRoute using cross-namespace backend (requires ReferenceGrant above)
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: cross-namespace-route
+  namespace: infra
+spec:
+  parentRefs:
+  - name: main-gateway
+    namespace: infra
+  hostnames:
+  - "api.example.com"
+  rules:
+  - backendRefs:
+    # Reference service in different namespace
+    - name: api-service
+      namespace: backend-services  # Cross-namespace reference
+      port: 80

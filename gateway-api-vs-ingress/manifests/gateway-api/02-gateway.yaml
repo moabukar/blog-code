@@ -1,0 +1,85 @@
+# Gateway - The entry point for traffic
+# Managed by cluster operators
+# Defines listeners, TLS, and which namespaces can attach routes
+
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: main-gateway
+  namespace: infra
+spec:
+  gatewayClassName: nginx
+  listeners:
+  # HTTP listener (typically redirects to HTTPS)
+  - name: http
+    protocol: HTTP
+    port: 80
+    hostname: "*.example.com"
+    allowedRoutes:
+      namespaces:
+        from: All  # Any namespace can attach routes
+
+  # HTTPS listener with TLS termination
+  - name: https
+    protocol: HTTPS
+    port: 443
+    hostname: "*.example.com"
+    tls:
+      mode: Terminate
+      certificateRefs:
+      - name: wildcard-tls-secret
+        kind: Secret
+    allowedRoutes:
+      namespaces:
+        from: All
+
+---
+# Production Gateway with restricted namespace access
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: production-gateway
+  namespace: infra
+spec:
+  gatewayClassName: nginx
+  listeners:
+  - name: https
+    protocol: HTTPS
+    port: 443
+    hostname: "*.prod.example.com"
+    tls:
+      mode: Terminate
+      certificateRefs:
+      - name: prod-tls-secret
+    allowedRoutes:
+      namespaces:
+        # Only namespaces with specific label can attach
+        from: Selector
+        selector:
+          matchLabels:
+            environment: production
+
+---
+# Staging Gateway - separate from production
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: staging-gateway
+  namespace: infra
+spec:
+  gatewayClassName: nginx
+  listeners:
+  - name: https
+    protocol: HTTPS
+    port: 443
+    hostname: "*.staging.example.com"
+    tls:
+      mode: Terminate
+      certificateRefs:
+      - name: staging-tls-secret
+    allowedRoutes:
+      namespaces:
+        from: Selector
+        selector:
+          matchLabels:
+            environment: staging

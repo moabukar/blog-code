@@ -1,0 +1,143 @@
+# HTTPRoute - Header-based Routing
+# Route based on HTTP headers, query params, or methods
+
+# Route internal testers to canary based on header
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: header-canary-route
+  namespace: default
+spec:
+  parentRefs:
+  - name: main-gateway
+    namespace: infra
+  hostnames:
+  - "app.example.com"
+  rules:
+  # Internal testers (X-Internal-Tester: true) go to canary
+  - matches:
+    - headers:
+      - name: X-Internal-Tester
+        value: "true"
+    backendRefs:
+    - name: app-canary
+      port: 80
+
+  # Beta users (X-Beta-User header present) go to beta
+  - matches:
+    - headers:
+      - name: X-Beta-User
+        type: RegularExpression
+        value: ".*"  # Any value
+    backendRefs:
+    - name: app-beta
+      port: 80
+
+  # Everyone else goes to stable
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /
+    backendRefs:
+    - name: app-stable
+      port: 80
+
+---
+# Route based on User-Agent (mobile vs desktop)
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: mobile-route
+  namespace: default
+spec:
+  parentRefs:
+  - name: main-gateway
+    namespace: infra
+  hostnames:
+  - "app.example.com"
+  rules:
+  # Mobile users
+  - matches:
+    - headers:
+      - name: User-Agent
+        type: RegularExpression
+        value: ".*(Mobile|Android|iPhone).*"
+    backendRefs:
+    - name: mobile-app
+      port: 80
+  # Desktop users
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /
+    backendRefs:
+    - name: desktop-app
+      port: 80
+
+---
+# Route based on HTTP method
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: method-route
+  namespace: default
+spec:
+  parentRefs:
+  - name: main-gateway
+    namespace: infra
+  hostnames:
+  - "api.example.com"
+  rules:
+  # GET requests to read service
+  - matches:
+    - method: GET
+      path:
+        type: PathPrefix
+        value: /resources
+    backendRefs:
+    - name: read-service
+      port: 80
+  # POST/PUT/DELETE to write service
+  - matches:
+    - method: POST
+      path:
+        type: PathPrefix
+        value: /resources
+    - method: PUT
+      path:
+        type: PathPrefix
+        value: /resources
+    - method: DELETE
+      path:
+        type: PathPrefix
+        value: /resources
+    backendRefs:
+    - name: write-service
+      port: 80
+
+---
+# Query parameter matching
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: query-param-route
+  namespace: default
+spec:
+  parentRefs:
+  - name: main-gateway
+    namespace: infra
+  hostnames:
+  - "api.example.com"
+  rules:
+  # ?version=v2 goes to v2 backend
+  - matches:
+    - queryParams:
+      - name: version
+        value: v2
+    backendRefs:
+    - name: api-v2
+      port: 80
+  # Default to v1
+  - backendRefs:
+    - name: api-v1
+      port: 80

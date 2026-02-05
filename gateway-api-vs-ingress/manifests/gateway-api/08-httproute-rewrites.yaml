@@ -1,0 +1,187 @@
+# HTTPRoute - URL Rewrites and Header Modification
+# Native support for request/response manipulation
+
+# URL Path Rewrite
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: rewrite-route
+  namespace: default
+spec:
+  parentRefs:
+  - name: main-gateway
+    namespace: infra
+  hostnames:
+  - "api.example.com"
+  rules:
+  # Rewrite /api/v1/* to /*
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /api/v1
+    filters:
+    - type: URLRewrite
+      urlRewrite:
+        path:
+          type: ReplacePrefixMatch
+          replacePrefixMatch: /
+    backendRefs:
+    - name: api-service
+      port: 80
+
+---
+# Request Header Modification
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: header-modify-route
+  namespace: default
+spec:
+  parentRefs:
+  - name: main-gateway
+    namespace: infra
+  hostnames:
+  - "api.example.com"
+  rules:
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /
+    filters:
+    - type: RequestHeaderModifier
+      requestHeaderModifier:
+        # Add headers
+        add:
+        - name: X-Gateway
+          value: "production"
+        - name: X-Request-Start
+          value: "t=%START_TIME%"
+        # Set headers (overwrite if exists)
+        set:
+        - name: X-Forwarded-Proto
+          value: "https"
+        # Remove headers
+        remove:
+        - X-Debug
+        - X-Internal-Token
+    backendRefs:
+    - name: api-service
+      port: 80
+
+---
+# Response Header Modification (Security headers)
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: security-headers-route
+  namespace: default
+spec:
+  parentRefs:
+  - name: main-gateway
+    namespace: infra
+  hostnames:
+  - "app.example.com"
+  rules:
+  - filters:
+    - type: ResponseHeaderModifier
+      responseHeaderModifier:
+        add:
+        - name: Strict-Transport-Security
+          value: "max-age=31536000; includeSubDomains; preload"
+        - name: X-Content-Type-Options
+          value: "nosniff"
+        - name: X-Frame-Options
+          value: "DENY"
+        - name: X-XSS-Protection
+          value: "1; mode=block"
+        - name: Referrer-Policy
+          value: "strict-origin-when-cross-origin"
+        remove:
+        - Server
+        - X-Powered-By
+    backendRefs:
+    - name: app-service
+      port: 80
+
+---
+# URL Redirect (HTTP to HTTPS)
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: https-redirect
+  namespace: default
+spec:
+  parentRefs:
+  - name: main-gateway
+    namespace: infra
+    sectionName: http  # Attach to HTTP listener
+  hostnames:
+  - "app.example.com"
+  rules:
+  - filters:
+    - type: RequestRedirect
+      requestRedirect:
+        scheme: https
+        statusCode: 301
+
+---
+# Path redirect
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: path-redirect
+  namespace: default
+spec:
+  parentRefs:
+  - name: main-gateway
+    namespace: infra
+  hostnames:
+  - "app.example.com"
+  rules:
+  # Redirect /old-path to /new-path
+  - matches:
+    - path:
+        type: Exact
+        value: /old-path
+    filters:
+    - type: RequestRedirect
+      requestRedirect:
+        path:
+          type: ReplaceFullPath
+          replaceFullPath: /new-path
+        statusCode: 301
+
+---
+# Combined: rewrite + headers
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: combined-filters-route
+  namespace: default
+spec:
+  parentRefs:
+  - name: main-gateway
+    namespace: infra
+  hostnames:
+  - "api.example.com"
+  rules:
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /legacy/api
+    filters:
+    # Rewrite path
+    - type: URLRewrite
+      urlRewrite:
+        path:
+          type: ReplacePrefixMatch
+          replacePrefixMatch: /v1
+    # Add migration header
+    - type: RequestHeaderModifier
+      requestHeaderModifier:
+        add:
+        - name: X-Legacy-Request
+          value: "true"
+    backendRefs:
+    - name: api-service
+      port: 80

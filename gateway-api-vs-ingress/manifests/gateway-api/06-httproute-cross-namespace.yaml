@@ -1,0 +1,113 @@
+# HTTPRoute - Cross-Namespace Routing
+# Multiple teams can attach routes to a shared Gateway
+
+# Namespace labels (apply these to namespaces)
+# kubectl label namespace team-a environment=production gateway-access=true
+# kubectl label namespace team-b environment=production gateway-access=true
+
+---
+# Team A's route (in team-a namespace)
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: team-a-api
+  namespace: team-a
+spec:
+  parentRefs:
+  - name: production-gateway
+    namespace: infra
+    # Optional: specify which listener to attach to
+    sectionName: https
+  hostnames:
+  - "api.prod.example.com"
+  rules:
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /team-a
+    backendRefs:
+    - name: team-a-service
+      port: 80
+
+---
+# Team B's route (in team-b namespace)
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: team-b-dashboard
+  namespace: team-b
+spec:
+  parentRefs:
+  - name: production-gateway
+    namespace: infra
+  hostnames:
+  - "dashboard.prod.example.com"
+  rules:
+  - backendRefs:
+    - name: dashboard-service
+      port: 80
+
+---
+# Team C's route - different hostname
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: team-c-app
+  namespace: team-c
+spec:
+  parentRefs:
+  - name: production-gateway
+    namespace: infra
+  hostnames:
+  - "app.prod.example.com"
+  rules:
+  - backendRefs:
+    - name: main-app
+      port: 80
+
+---
+# Shared route - multiple teams routing to same hostname
+# Team A handles /api, Team B handles /admin
+
+# Team A's portion
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: shared-api-route
+  namespace: team-a
+spec:
+  parentRefs:
+  - name: production-gateway
+    namespace: infra
+  hostnames:
+  - "shared.prod.example.com"
+  rules:
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /api
+    backendRefs:
+    - name: api-service
+      port: 80
+
+---
+# Team B's portion (same hostname, different path)
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: shared-admin-route
+  namespace: team-b
+spec:
+  parentRefs:
+  - name: production-gateway
+    namespace: infra
+  hostnames:
+  - "shared.prod.example.com"
+  rules:
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /admin
+    backendRefs:
+    - name: admin-service
+      port: 80

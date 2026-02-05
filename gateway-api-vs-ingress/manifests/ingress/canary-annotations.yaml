@@ -1,0 +1,69 @@
+# Traditional Ingress - Canary deployment with NGINX annotations
+# Note: This is NGINX-specific and won't work with other controllers
+
+# Stable deployment ingress
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: app-stable
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: app.example.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: app-stable
+            port:
+              number: 80
+
+---
+# Canary deployment ingress (receives 10% of traffic)
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: app-canary
+  annotations:
+    # NGINX-specific annotations - not portable
+    nginx.ingress.kubernetes.io/canary: "true"
+    nginx.ingress.kubernetes.io/canary-weight: "10"
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: app.example.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: app-canary
+            port:
+              number: 80
+
+---
+# Header-based canary (NGINX-specific)
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: app-canary-header
+  annotations:
+    nginx.ingress.kubernetes.io/canary: "true"
+    nginx.ingress.kubernetes.io/canary-by-header: "X-Canary"
+    nginx.ingress.kubernetes.io/canary-by-header-value: "true"
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: app.example.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: app-canary
+            port:
+              number: 80

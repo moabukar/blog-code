@@ -1,0 +1,38 @@
+# Traditional Ingress with TLS termination
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: tls-ingress
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    # Force HTTPS
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+spec:
+  ingressClassName: nginx
+  tls:
+  - hosts:
+    - secure.example.com
+    secretName: tls-secret
+  rules:
+  - host: secure.example.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: secure-app
+            port:
+              number: 80
+
+---
+# TLS Secret (example - use cert-manager in production)
+apiVersion: v1
+kind: Secret
+metadata:
+  name: tls-secret
+type: kubernetes.io/tls
+data:
+  # Base64-encoded certificate and key
+  tls.crt: LS0tLS1CRUdJTi... # Replace with actual cert
+  tls.key: LS0tLS1CRUdJTi... # Replace with actual key
