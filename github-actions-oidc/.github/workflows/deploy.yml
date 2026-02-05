@@ -1,0 +1,38 @@
+# deploy.yml - Example workflow using OIDC authentication
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  id-token: write   # Required for OIDC
+  contents: read
+
+env:
+  AWS_REGION: eu-west-1
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::123456789012:role/github-actions-myrepo
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Verify AWS identity
+        run: aws sts get-caller-identity
+
+      - name: Deploy to S3 (example)
+        run: |
+          aws s3 sync ./dist s3://my-bucket/ --delete
+
+      - name: Invalidate CloudFront (example)
+        run: |
+          aws cloudfront create-invalidation \
+            --distribution-id E1234567890ABC \
+            --paths "/*"

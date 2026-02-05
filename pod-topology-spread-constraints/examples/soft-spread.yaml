@@ -1,0 +1,26 @@
+# soft-spread.yaml
+# Best-effort spreading (won't block scheduling)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web-soft
+spec:
+  replicas: 10
+  selector:
+    matchLabels:
+      app: web-soft
+  template:
+    metadata:
+      labels:
+        app: web-soft
+    spec:
+      topologySpreadConstraints:
+        - maxSkew: 2
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway  # Soft constraint
+          labelSelector:
+            matchLabels:
+              app: web-soft
+      containers:
+        - name: web
+          image: nginx
