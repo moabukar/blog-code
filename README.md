@@ -9,6 +9,7 @@ Each folder contains the full working code for a corresponding blog post.
 | Directory | Blog Post | Description |
 |-----------|-----------|-------------|
 | [act-locally-test-github-actions](./act-locally-test-github-actions/) | [Test GitHub Actions Locally with Act](https://moabukar.co.uk/blog/act-locally-test-github-actions) | Run GitHub Actions workflows locally using Docker |
+| [aws-managed-prefix-lists](./aws-managed-prefix-lists/) | [AWS Managed Prefix Lists](https://moabukar.co.uk/blog/aws-managed-prefix-lists-terraform) | Stop hardcoding CIDRs - use prefix lists |
 | [backstage-aws-ecs-production](./backstage-aws-ecs-production/) | [Backstage on AWS ECS](https://moabukar.co.uk/blog/backstage-aws-ecs-production) | Deploy Backstage to AWS ECS Fargate with RDS and Cognito |
 | [container-image-signing-cosign](./container-image-signing-cosign/) | [Container Image Signing with Cosign](https://moabukar.co.uk/blog/container-image-signing-cosign) | Sign and verify container images with Cosign and Sigstore |
 | [database-backup-s3-kubernetes](./database-backup-s3-kubernetes/) | [Database Backup to S3 with K8s CronJobs](https://moabukar.co.uk/blog/database-backup-s3-kubernetes) | Kubernetes CronJob for PostgreSQL backups to S3 |
