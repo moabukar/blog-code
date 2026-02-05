@@ -1,0 +1,98 @@
+# -----------------------------------------------------------------------------
+# Pod Security Violations Examples
+# -----------------------------------------------------------------------------
+# These pods will be REJECTED by the respective profiles
+
+---
+# REJECTED by Baseline and Restricted - privileged container
+apiVersion: v1
+kind: Pod
+metadata:
+  name: privileged-violation
+spec:
+  containers:
+    - name: app
+      image: nginx
+      securityContext:
+        privileged: true  # ❌ Blocked by baseline
+
+---
+# REJECTED by Baseline and Restricted - hostNetwork
+apiVersion: v1
+kind: Pod
+metadata:
+  name: host-network-violation
+spec:
+  hostNetwork: true  # ❌ Blocked by baseline
+  containers:
+    - name: app
+      image: nginx
+
+---
+# REJECTED by Baseline and Restricted - hostPath volume
+apiVersion: v1
+kind: Pod
+metadata:
+  name: hostpath-violation
+spec:
+  containers:
+    - name: app
+      image: nginx
+      volumeMounts:
+        - name: host-vol
+          mountPath: /host
+  volumes:
+    - name: host-vol
+      hostPath:  # ❌ Blocked by baseline
+        path: /etc
+
+---
+# REJECTED by Restricted - missing runAsNonRoot
+apiVersion: v1
+kind: Pod
+metadata:
+  name: root-user-violation
+spec:
+  containers:
+    - name: app
+      image: nginx
+      # ❌ Missing runAsNonRoot: true
+
+---
+# REJECTED by Restricted - missing capability drop
+apiVersion: v1
+kind: Pod
+metadata:
+  name: capabilities-violation
+spec:
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+    seccompProfile:
+      type: RuntimeDefault
+  containers:
+    - name: app
+      image: nginx
+      securityContext:
+        allowPrivilegeEscalation: false
+        # ❌ Missing capabilities.drop: ["ALL"]
+
+---
+# REJECTED by Restricted - missing seccomp profile
+apiVersion: v1
+kind: Pod
+metadata:
+  name: seccomp-violation
+spec:
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+    # ❌ Missing seccompProfile
+  containers:
+    - name: app
+      image: nginx
+      securityContext:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop:
+            - ALL

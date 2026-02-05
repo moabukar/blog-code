@@ -1,0 +1,60 @@
+# -----------------------------------------------------------------------------
+# Example Deployment using ExternalSecret
+# -----------------------------------------------------------------------------
+# Shows how to consume secrets created by ExternalSecret in a deployment
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api-server
+  namespace: app
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: api-server
+  template:
+    metadata:
+      labels:
+        app: api-server
+      annotations:
+        # Use Reloader to auto-restart when secrets change
+        reloader.stakater.com/auto: "true"
+    spec:
+      containers:
+        - name: api
+          image: myapp:1.0.0
+          ports:
+            - containerPort: 8080
+          env:
+            # Reference individual keys from the secret
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: database-url  # Created by ExternalSecret
+                  key: DATABASE_URL
+            
+            - name: STRIPE_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: STRIPE_API_KEY
+          
+          # Or mount as a volume
+          volumeMounts:
+            - name: secrets
+              mountPath: /etc/secrets
+              readOnly: true
+          
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "256Mi"
+              cpu: "500m"
+      
+      volumes:
+        - name: secrets
+          secret:
+            secretName: app-secrets  # Created by ExternalSecret

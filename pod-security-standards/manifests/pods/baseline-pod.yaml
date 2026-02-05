@@ -1,0 +1,32 @@
+# -----------------------------------------------------------------------------
+# Baseline-Compliant Pod
+# -----------------------------------------------------------------------------
+# This pod passes baseline but NOT restricted
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: baseline-pod
+  namespace: development
+spec:
+  containers:
+    - name: app
+      image: nginx:1.25
+      ports:
+        - containerPort: 80
+      
+      # No securityContext required for baseline
+      # But these are blocked:
+      # - privileged: true
+      # - hostNetwork: true
+      # - hostPID: true
+      # - hostPath volumes
+      # - hostPorts
+      
+      resources:
+        requests:
+          memory: "64Mi"
+          cpu: "100m"
+        limits:
+          memory: "128Mi"
+          cpu: "500m"

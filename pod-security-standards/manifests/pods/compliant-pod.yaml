@@ -1,0 +1,61 @@
+# -----------------------------------------------------------------------------
+# Restricted-Compliant Pod
+# -----------------------------------------------------------------------------
+# This pod passes the restricted profile
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: compliant-pod
+  namespace: production
+spec:
+  securityContext:
+    # Required: must run as non-root
+    runAsNonRoot: true
+    runAsUser: 1000
+    runAsGroup: 1000
+    fsGroup: 1000
+    # Required: must set seccomp profile
+    seccompProfile:
+      type: RuntimeDefault
+  
+  containers:
+    - name: app
+      image: nginx:1.25-alpine
+      ports:
+        - containerPort: 8080
+      
+      securityContext:
+        # Required: must disallow privilege escalation
+        allowPrivilegeEscalation: false
+        # Required: must drop all capabilities
+        capabilities:
+          drop:
+            - ALL
+        # Recommended: read-only root filesystem
+        readOnlyRootFilesystem: true
+      
+      resources:
+        requests:
+          memory: "64Mi"
+          cpu: "100m"
+        limits:
+          memory: "128Mi"
+          cpu: "500m"
+      
+      # Write to emptyDir volumes instead of root filesystem
+      volumeMounts:
+        - name: tmp
+          mountPath: /tmp
+        - name: cache
+          mountPath: /var/cache/nginx
+        - name: run
+          mountPath: /var/run
+  
+  volumes:
+    - name: tmp
+      emptyDir: {}
+    - name: cache
+      emptyDir: {}
+    - name: run
+      emptyDir: {}
