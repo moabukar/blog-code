@@ -1,9 +1,9 @@
-# docker-compose.yml
 version: '3.8'
 
 services:
   localstack:
     image: localstack/localstack:latest
+    container_name: localstack
     ports:
       - "4566:4566"            # LocalStack Gateway
       - "4510-4559:4510-4559"  # External services port range
@@ -11,17 +11,13 @@ services:
       - DEBUG=1
       - DOCKER_HOST=unix:///var/run/docker.sock
       - PERSISTENCE=1          # Persist data between restarts
+      - SERVICES=s3,dynamodb,lambda,sqs,sns,secretsmanager,iam,sts
     volumes:
       - "./localstack-data:/var/lib/localstack"
       - "/var/run/docker.sock:/var/run/docker.sock"
-
-  # Optional: Application that uses LocalStack
-  app:
-    build: .
-    environment:
-      - AWS_ENDPOINT_URL=http://localstack:4566
-      - AWS_ACCESS_KEY_ID=test
-      - AWS_SECRET_ACCESS_KEY=test
-      - AWS_DEFAULT_REGION=us-east-1
-    depends_on:
-      - localstack
+      - "./init-aws.sh:/etc/localstack/init/ready.d/init-aws.sh"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4566/_localstack/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5

@@ -1,0 +1,90 @@
+app:
+  title: Backstage Developer Portal
+  baseUrl: ${APP_CONFIG_app_baseUrl}
+
+organization:
+  name: Your Company
+
+backend:
+  baseUrl: ${APP_CONFIG_backend_baseUrl}
+  listen:
+    port: 7007
+    host: 0.0.0.0
+  cors:
+    origin: ${APP_CONFIG_backend_cors_origin}
+    methods: [GET, HEAD, PATCH, POST, PUT, DELETE]
+    credentials: true
+
+  database:
+    client: pg
+    connection:
+      host: ${POSTGRES_HOST}
+      port: ${POSTGRES_PORT}
+      user: ${POSTGRES_USER}
+      password: ${POSTGRES_PASSWORD}
+      database: backstage
+      ssl:
+        require: true
+        rejectUnauthorized: false
+
+  cache:
+    store: memory
+
+  csp:
+    connect-src: ["'self'", 'http:', 'https:']
+    img-src: ["'self'", 'data:', 'https:']
+    script-src: ["'self'", "'unsafe-eval'"]
+
+auth:
+  environment: production
+  providers:
+    cognito:
+      production:
+        clientId: ${COGNITO_CLIENT_ID}
+        clientSecret: ${COGNITO_CLIENT_SECRET}
+        issuer: https://cognito-idp.${AWS_REGION}.amazonaws.com/${COGNITO_USER_POOL_ID}
+        signIn:
+          resolvers:
+            - resolver: emailMatchingUserEntityProfileEmail
+
+integrations:
+  github:
+    - host: github.com
+      token: ${GITHUB_TOKEN}
+
+catalog:
+  import:
+    entityFilename: catalog-info.yaml
+    pullRequestBranchName: backstage-integration
+  rules:
+    - allow: [Component, System, API, Resource, Location, Domain, Group, User]
+  locations:
+    - type: file
+      target: ../catalog-info.yaml
+    - type: url
+      target: https://github.com/your-org/software-catalog/blob/main/all.yaml
+      rules:
+        - allow: [Component, System, API, Resource, Domain]
+
+techdocs:
+  builder: 'local'
+  generator:
+    runIn: 'docker'
+  publisher:
+    type: 'awsS3'
+    awsS3:
+      bucketName: ${TECHDOCS_BUCKET}
+      region: ${AWS_REGION}
+
+kubernetes:
+  serviceLocatorMethod:
+    type: 'multiTenant'
+  clusterLocatorMethods:
+    - type: 'config'
+      clusters: []
+
+scaffolder:
+  defaultAuthor:
+    name: Backstage Scaffolder
+    email: scaffolder@company.com
+  defaultCommitMessage: 'Initial commit from Backstage'
