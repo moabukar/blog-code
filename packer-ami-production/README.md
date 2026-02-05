@@ -4,7 +4,7 @@ Complete infrastructure code for building immutable AMIs with Packer, deploying 
 
 ## Blog Post
 
-📖 **[Read the full blog post](https://moabukar.io/blog/packer-ami-production)**
+📖 **[Read the full blog post](https://moabukar.co.uk/blog/packer-ami-production)**
 
 ## What's Included
 
