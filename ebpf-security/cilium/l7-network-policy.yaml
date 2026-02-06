@@ -1,0 +1,86 @@
+# Cilium L7 Network Policy
+# =========================
+# Layer 7 aware network policy with HTTP path filtering
+
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: api-server-l7-policy
+  namespace: production
+spec:
+  endpointSelector:
+    matchLabels:
+      app: api-server
+  
+  ingress:
+    # Allow frontend to access only public API endpoints
+    - fromEndpoints:
+        - matchLabels:
+            app: frontend
+      toPorts:
+        - ports:
+            - port: "8080"
+              protocol: TCP
+          rules:
+            http:
+              - method: GET
+                path: "/api/v1/public/.*"
+              - method: POST
+                path: "/api/v1/public/.*"
+              - method: GET
+                path: "/health"
+    
+    # Allow admin panel full access
+    - fromEndpoints:
+        - matchLabels:
+            app: admin-panel
+            role: admin
+      toPorts:
+        - ports:
+            - port: "8080"
+              protocol: TCP
+    
+    # Allow monitoring
+    - fromEndpoints:
+        - matchLabels:
+            app: prometheus
+      toPorts:
+        - ports:
+            - port: "8080"
+              protocol: TCP
+          rules:
+            http:
+              - method: GET
+                path: "/metrics"
+  
+  egress:
+    # Allow to database
+    - toEndpoints:
+        - matchLabels:
+            app: postgres
+      toPorts:
+        - ports:
+            - port: "5432"
+              protocol: TCP
+    
+    # Allow to Redis
+    - toEndpoints:
+        - matchLabels:
+            app: redis
+      toPorts:
+        - ports:
+            - port: "6379"
+              protocol: TCP
+    
+    # Allow DNS
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: kube-system
+            k8s-app: kube-dns
+      toPorts:
+        - ports:
+            - port: "53"
+              protocol: UDP
+          rules:
+            dns:
+              - matchPattern: "*"

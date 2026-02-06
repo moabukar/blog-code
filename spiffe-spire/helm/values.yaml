@@ -1,0 +1,94 @@
+# SPIRE Helm Values
+# ==================
+# Production-ready configuration for SPIRE on Kubernetes
+
+global:
+  spire:
+    # Your organization's trust domain
+    trustDomain: example.com
+    # Cluster identifier (used in SPIFFE IDs)
+    clusterName: cluster
+
+# SPIRE Server configuration
+spire-server:
+  replicaCount: 3
+  
+  # CA configuration
+  ca_subject:
+    country: GB
+    organization: Example
+    common_name: SPIRE CA
+  
+  # SVID TTL - shorter is more secure
+  default_x509_svid_ttl: 1h
+  default_jwt_svid_ttl: 5m
+  
+  # CA TTL
+  ca_ttl: 24h
+  
+  # Node attestor - Kubernetes Projected Service Account Token
+  nodeAttestor:
+    k8sPsat:
+      enabled: true
+      serviceAccountAllowList:
+        - spire-system:spire-agent
+  
+  # Datastore configuration
+  # For production, use PostgreSQL:
+  # dataStore:
+  #   sql:
+  #     databaseType: postgres
+  #     connectionString: postgres://user:pass@host:5432/spire?sslmode=require
+  dataStore:
+    sql:
+      databaseType: sqlite3
+      connectionString: /run/spire/data/datastore.sqlite3
+  
+  # Key manager - use disk for persistence
+  keyManager:
+    disk:
+      enabled: true
+      keysPath: /run/spire/data/keys.json
+  
+  # Controller manager for CRDs
+  controllerManager:
+    enabled: true
+    validatingWebhookConfiguration:
+      failurePolicy: Fail
+  
+  # Resources
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+# SPIRE Agent configuration
+spire-agent:
+  # Workload attestor for Kubernetes
+  workloadAttestors:
+    k8s:
+      enabled: true
+      skipKubeletVerification: false
+  
+  # Socket path for Workload API
+  socketPath: /run/spire/agent-sockets/spire-agent.sock
+  
+  # Resources
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 128Mi
+
+# SPIFFE CSI Driver (mounts SVIDs as volumes)
+spiffe-csi-driver:
+  enabled: true
+
+# SPIFFE OIDC Discovery Provider
+spiffe-oidc-discovery-provider:
+  enabled: false  # Enable if you need JWT SVID validation

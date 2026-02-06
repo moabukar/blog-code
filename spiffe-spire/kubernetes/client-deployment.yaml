@@ -1,0 +1,60 @@
+# mTLS Client Deployment
+# ======================
+# Example client that uses SPIFFE for mTLS
+
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: mtls-client
+  namespace: default
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mtls-client
+  namespace: default
+  labels:
+    app: mtls-client
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mtls-client
+  template:
+    metadata:
+      labels:
+        app: mtls-client
+        spiffe.io/enabled: "true"
+    spec:
+      serviceAccountName: mtls-client
+      containers:
+        - name: client
+          image: ghcr.io/moabukar/spiffe-mtls-client:latest
+          env:
+            - name: SPIFFE_ENDPOINT_SOCKET
+              value: "unix:///run/spire/agent-sockets/spire-agent.sock"
+            # Server to connect to
+            - name: SERVER_URL
+              value: "https://mtls-server:8443"
+            # Expected server SPIFFE ID
+            - name: SERVER_SPIFFE_ID
+              value: "spiffe://example.com/ns/default/sa/mtls-server"
+            # Request interval
+            - name: INTERVAL
+              value: "10s"
+          volumeMounts:
+            - name: spire-agent-socket
+              mountPath: /run/spire/agent-sockets
+              readOnly: true
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+      volumes:
+        - name: spire-agent-socket
+          csi:
+            driver: "csi.spiffe.io"
+            readOnly: true

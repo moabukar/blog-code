@@ -1,0 +1,56 @@
+# ClusterSPIFFEID resources
+# =========================
+# Automatically register workloads with SPIRE based on K8s selectors
+
+apiVersion: spire.spiffe.io/v1alpha1
+kind: ClusterSPIFFEID
+metadata:
+  name: default-workloads
+spec:
+  # Dynamic SPIFFE ID based on pod metadata
+  spiffeIDTemplate: "spiffe://{{ .TrustDomain }}/ns/{{ .PodMeta.Namespace }}/sa/{{ .PodSpec.ServiceAccountName }}"
+  
+  # Match all pods with the label
+  podSelector:
+    matchLabels:
+      spiffe.io/enabled: "true"
+  
+  # Match namespaces (exclude system namespaces)
+  namespaceSelector:
+    matchExpressions:
+      - key: kubernetes.io/metadata.name
+        operator: NotIn
+        values:
+          - kube-system
+          - kube-public
+          - kube-node-lease
+          - spire-system
+  
+  # X.509 SVID TTL
+  x509SVIDTTL: 1h
+
+---
+apiVersion: spire.spiffe.io/v1alpha1
+kind: ClusterSPIFFEID
+metadata:
+  name: api-servers
+spec:
+  # Specific SPIFFE ID for API servers
+  spiffeIDTemplate: "spiffe://{{ .TrustDomain }}/service/api"
+  
+  podSelector:
+    matchLabels:
+      app: api-server
+      spiffe.io/enabled: "true"
+  
+  namespaceSelector:
+    matchLabels:
+      environment: production
+  
+  # Longer TTL for stable services
+  x509SVIDTTL: 4h
+  
+  # DNS names for the SVID (for TLS SNI)
+  dnsNameTemplates:
+    - "api.{{ .PodMeta.Namespace }}.svc.cluster.local"
+    - "api.internal.company.com"

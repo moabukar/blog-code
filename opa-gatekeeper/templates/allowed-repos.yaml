@@ -1,0 +1,44 @@
+apiVersion: templates.gatekeeper.sh/v1
+kind: ConstraintTemplate
+metadata:
+  name: k8sallowedrepos
+  annotations:
+    description: "Restricts container images to approved registries"
+spec:
+  crd:
+    spec:
+      names:
+        kind: K8sAllowedRepos
+      validation:
+        openAPIV3Schema:
+          type: object
+          properties:
+            repos:
+              type: array
+              items:
+                type: string
+              description: "List of allowed image prefixes"
+  targets:
+    - target: admission.k8s.gatekeeper.sh
+      rego: |
+        package k8sallowedrepos
+
+        violation[{"msg": msg}] {
+          c := input_containers[_]
+          not image_allowed(c.image)
+          msg := sprintf("Container %v uses non-approved registry. Image: %v. Allowed: %v", 
+            [c.name, c.image, input.parameters.repos])
+        }
+
+        image_allowed(image) {
+          repo := input.parameters.repos[_]
+          startswith(image, repo)
+        }
+
+        input_containers[c] {
+          c := input.review.object.spec.containers[_]
+        }
+
+        input_containers[c] {
+          c := input.review.object.spec.initContainers[_]
+        }

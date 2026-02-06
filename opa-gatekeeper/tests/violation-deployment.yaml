@@ -1,0 +1,27 @@
+# This deployment should be REJECTED by Gatekeeper
+# - Missing required labels
+# - Uses non-approved registry
+# - Uses privileged container
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: violation-example
+  namespace: default
+  # Missing: team and app labels
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: violation
+  template:
+    metadata:
+      labels:
+        app: violation
+        # Missing: team label
+    spec:
+      containers:
+        - name: app
+          image: randomregistry.io/app:latest  # Non-approved registry
+          securityContext:
+            privileged: true  # Not allowed

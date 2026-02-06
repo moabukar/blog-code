@@ -1,0 +1,44 @@
+# This deployment should be ACCEPTED by Gatekeeper
+# - Has required labels
+# - Uses approved registry
+# - No privileged container
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: compliant-example
+  namespace: default
+  labels:
+    team: platform
+    app: example
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: example
+  template:
+    metadata:
+      labels:
+        team: platform
+        app: example
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
+      containers:
+        - name: app
+          image: ghcr.io/company/app:v1.0.0  # Approved registry, pinned tag
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi

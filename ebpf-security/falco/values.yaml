@@ -1,0 +1,143 @@
+# Falco Helm Values
+# ==================
+# Production configuration with eBPF driver and alerting
+
+driver:
+  kind: ebpf
+  ebpf:
+    hostNetwork: true
+
+falco:
+  jsonOutput: true
+  jsonIncludeOutputProperty: true
+  jsonIncludeTagsProperty: true
+  
+  # Priorities to log
+  priority: notice
+  
+  # Rule files
+  rulesFile:
+    - /etc/falco/falco_rules.yaml
+    - /etc/falco/falco_rules.local.yaml
+    - /etc/falco/rules.d
+  
+  # gRPC output for Falcosidekick
+  grpc:
+    enabled: true
+    threadiness: 8
+  
+  grpcOutput:
+    enabled: true
+
+# Falcosidekick for alert routing
+falcosidekick:
+  enabled: true
+  
+  config:
+    # Slack
+    slack:
+      webhookurl: ""  # Set via secret
+      channel: "#security-alerts"
+      username: "Falco"
+      icon: ":warning:"
+      outputformat: "all"
+      minimumpriority: "warning"
+    
+    # Elasticsearch
+    elasticsearch:
+      hostport: ""  # Set to your ES cluster
+      index: "falco"
+      type: "_doc"
+      minimumpriority: "notice"
+    
+    # Prometheus metrics
+    prometheus:
+      extralabels: ""
+    
+    # Webhook for custom integrations
+    webhook:
+      address: ""
+      minimumpriority: "warning"
+  
+  webui:
+    enabled: true
+    replicaCount: 1
+
+# Custom rules
+customRules:
+  rules-custom.yaml: |-
+    # Shell in container
+    - rule: Shell Spawned in Container
+      desc: A shell was spawned in a container
+      condition: >
+        spawned_process and
+        container and
+        shell_procs and
+        not proc.pname in (cron, crond, sshd)
+      output: >
+        Shell spawned (user=%user.name container=%container.name
+        shell=%proc.name parent=%proc.pname cmdline=%proc.cmdline
+        image=%container.image.repository)
+      priority: WARNING
+      tags: [container, shell, mitre_execution]
+
+    # Sensitive file read
+    - rule: Read Sensitive File in Container
+      desc: Reading sensitive files in container
+      condition: >
+        open_read and
+        container and
+        sensitive_files
+      output: >
+        Sensitive file read (user=%user.name file=%fd.name
+        container=%container.name image=%container.image.repository)
+      priority: WARNING
+      tags: [filesystem, mitre_credential_access]
+
+    # Network tool in container
+    - rule: Network Tool in Container
+      desc: Network reconnaissance tool run in container
+      condition: >
+        spawned_process and
+        container and
+        proc.name in (nc, ncat, netcat, nmap, ping, traceroute, dig, nslookup)
+      output: >
+        Network tool executed (user=%user.name tool=%proc.name
+        container=%container.name cmdline=%proc.cmdline)
+      priority: NOTICE
+      tags: [network, mitre_discovery]
+
+    # Package manager in container
+    - rule: Package Manager in Container
+      desc: Package manager used in running container
+      condition: >
+        spawned_process and
+        container and
+        proc.name in (apt, apt-get, yum, dnf, apk, pip, npm, gem)
+      output: >
+        Package manager executed (user=%user.name tool=%proc.name
+        container=%container.name cmdline=%proc.cmdline)
+      priority: NOTICE
+      tags: [container, mitre_persistence]
+
+    # Crypto mining
+    - rule: Crypto Mining Process
+      desc: Crypto mining process detected
+      condition: >
+        spawned_process and
+        (proc.name in (xmrig, minerd, cpuminer, cgminer, ethminer) or
+         proc.cmdline contains "stratum+tcp" or
+         proc.cmdline contains "pool.minergate")
+      output: >
+        Crypto mining detected (user=%user.name process=%proc.name
+        cmdline=%proc.cmdline container=%container.name)
+      priority: CRITICAL
+      tags: [cryptomining, mitre_impact]
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi

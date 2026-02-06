@@ -1,0 +1,68 @@
+# Cluster-Wide Network Policies
+# ==============================
+# Default deny + explicit allow patterns
+
+---
+# Default: deny all egress to external
+apiVersion: cilium.io/v2
+kind: CiliumClusterwideNetworkPolicy
+metadata:
+  name: default-deny-external-egress
+spec:
+  description: "Deny all egress to external by default"
+  endpointSelector: {}
+  egressDeny:
+    - toEntities:
+        - world
+
+---
+# Allow specific external APIs for labeled pods
+apiVersion: cilium.io/v2
+kind: CiliumClusterwideNetworkPolicy
+metadata:
+  name: allow-external-apis
+spec:
+  description: "Allow egress to specific external APIs"
+  endpointSelector:
+    matchLabels:
+      external-access: "true"
+  egress:
+    - toFQDNs:
+        - matchName: "api.stripe.com"
+        - matchName: "api.sendgrid.com"
+        - matchName: "api.twilio.com"
+        - matchPattern: "*.amazonaws.com"
+        - matchPattern: "*.googleapis.com"
+      toPorts:
+        - ports:
+            - port: "443"
+              protocol: TCP
+
+---
+# Allow egress to internal services cluster-wide
+apiVersion: cilium.io/v2
+kind: CiliumClusterwideNetworkPolicy
+metadata:
+  name: allow-internal-cluster
+spec:
+  description: "Allow all internal cluster traffic"
+  endpointSelector: {}
+  egress:
+    - toEntities:
+        - cluster
+
+---
+# Block known malicious destinations
+apiVersion: cilium.io/v2
+kind: CiliumClusterwideNetworkPolicy
+metadata:
+  name: block-malicious
+spec:
+  description: "Block known malicious IPs and domains"
+  endpointSelector: {}
+  egressDeny:
+    - toCIDR:
+        - "198.51.100.0/24"  # Example malicious range
+    - toFQDNs:
+        - matchPattern: "*.malware.com"
+        - matchPattern: "*.cryptominer.net"

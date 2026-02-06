@@ -1,0 +1,84 @@
+# Tetragon Process Tracing Policies
+# ==================================
+# Monitor and optionally enforce process execution
+
+---
+# Track all process execution
+apiVersion: cilium.io/v1alpha1
+kind: TracingPolicy
+metadata:
+  name: process-execution
+spec:
+  kprobes:
+    - call: "sys_execve"
+      syscall: true
+      args:
+        - index: 0
+          type: "string"
+      selectors:
+        - matchArgs:
+            - index: 0
+              operator: "Prefix"
+              values:
+                - "/"
+
+---
+# Block crypto miners
+apiVersion: cilium.io/v1alpha1
+kind: TracingPolicy
+metadata:
+  name: block-crypto-mining
+spec:
+  kprobes:
+    - call: "sys_execve"
+      syscall: true
+      args:
+        - index: 0
+          type: "string"
+      selectors:
+        - matchArgs:
+            - index: 0
+              operator: "Postfix"
+              values:
+                - "/xmrig"
+                - "/minerd"
+                - "/cpuminer"
+                - "/cgminer"
+                - "/ethminer"
+          matchActions:
+            - action: Sigkill
+
+---
+# Block reverse shells
+apiVersion: cilium.io/v1alpha1
+kind: TracingPolicy
+metadata:
+  name: block-reverse-shell
+spec:
+  kprobes:
+    - call: "sys_connect"
+      syscall: true
+      args:
+        - index: 0
+          type: "int"
+        - index: 1
+          type: "sockaddr"
+      selectors:
+        # Block shells connecting to external IPs
+        - matchArgs:
+            - index: 1
+              operator: "NotEqual"
+              values:
+                - "family:AF_INET,addr:10.0.0.0/8"
+                - "family:AF_INET,addr:172.16.0.0/12"
+                - "family:AF_INET,addr:192.168.0.0/16"
+                - "family:AF_INET,addr:127.0.0.0/8"
+          matchBinaries:
+            - operator: "In"
+              values:
+                - "/bin/bash"
+                - "/bin/sh"
+                - "/bin/dash"
+                - "/bin/zsh"
+          matchActions:
+            - action: Sigkill

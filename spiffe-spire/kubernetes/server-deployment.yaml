@@ -1,0 +1,82 @@
+# mTLS Server Deployment
+# ======================
+# Example server that uses SPIFFE for mTLS
+
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: mtls-server
+  namespace: default
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mtls-server
+  namespace: default
+  labels:
+    app: mtls-server
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mtls-server
+  template:
+    metadata:
+      labels:
+        app: mtls-server
+        spiffe.io/enabled: "true"
+    spec:
+      serviceAccountName: mtls-server
+      containers:
+        - name: server
+          image: ghcr.io/moabukar/spiffe-mtls-server:latest
+          ports:
+            - containerPort: 8443
+              name: https
+          env:
+            - name: SPIFFE_ENDPOINT_SOCKET
+              value: "unix:///run/spire/agent-sockets/spire-agent.sock"
+            - name: LISTEN_ADDR
+              value: ":8443"
+            # Trust any SPIFFE ID in our trust domain
+            - name: ALLOWED_TRUST_DOMAIN
+              value: "example.com"
+          volumeMounts:
+            - name: spire-agent-socket
+              mountPath: /run/spire/agent-sockets
+              readOnly: true
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+          readinessProbe:
+            tcpSocket:
+              port: 8443
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            tcpSocket:
+              port: 8443
+            initialDelaySeconds: 10
+            periodSeconds: 20
+      volumes:
+        - name: spire-agent-socket
+          csi:
+            driver: "csi.spiffe.io"
+            readOnly: true
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mtls-server
+  namespace: default
+spec:
+  selector:
+    app: mtls-server
+  ports:
+    - port: 8443
+      targetPort: 8443
+      name: https

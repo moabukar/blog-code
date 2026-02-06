@@ -1,0 +1,81 @@
+# Tetragon File Access Tracing
+# =============================
+# Monitor and protect sensitive files
+
+---
+# Monitor sensitive file access
+apiVersion: cilium.io/v1alpha1
+kind: TracingPolicy
+metadata:
+  name: sensitive-file-monitoring
+spec:
+  kprobes:
+    - call: "fd_install"
+      syscall: false
+      args:
+        - index: 0
+          type: "int"
+        - index: 1
+          type: "file"
+      selectors:
+        - matchArgs:
+            - index: 1
+              operator: "Prefix"
+              values:
+                - "/etc/shadow"
+                - "/etc/passwd"
+                - "/etc/sudoers"
+                - "/root/.ssh"
+                - "/home"
+
+---
+# Block write to sensitive paths (enforce)
+apiVersion: cilium.io/v1alpha1
+kind: TracingPolicy
+metadata:
+  name: protect-sensitive-files
+spec:
+  kprobes:
+    - call: "sys_write"
+      syscall: true
+      args:
+        - index: 0
+          type: "fd"
+      selectors:
+        - matchArgs:
+            - index: 0
+              operator: "Prefix"
+              values:
+                - "/etc/shadow"
+                - "/etc/sudoers"
+                - "/etc/crontab"
+          matchActions:
+            - action: Sigkill
+
+---
+# Monitor /tmp executable creation
+apiVersion: cilium.io/v1alpha1
+kind: TracingPolicy
+metadata:
+  name: tmp-executable-creation
+spec:
+  kprobes:
+    - call: "sys_chmod"
+      syscall: true
+      args:
+        - index: 0
+          type: "string"
+        - index: 1
+          type: "int"
+      selectors:
+        - matchArgs:
+            - index: 0
+              operator: "Prefix"
+              values:
+                - "/tmp/"
+                - "/var/tmp/"
+                - "/dev/shm/"
+            - index: 1
+              operator: "Mask"
+              values:
+                - "0111"  # Any execute bit
