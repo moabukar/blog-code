@@ -1,6 +1,6 @@
 # Identity Aware Proxy Examples
 
-Code examples for the blog post: [Identity Aware Proxy: Zero Trust Access for Internal Applications](https://moabukar.io/blog/identity-aware-proxy-deep-dive)
+Code examples for the blog post: [Identity Aware Proxy: Zero Trust Access for Internal Applications](https://moabukar.co.uk/blog/identity-aware-proxy-deep-dive)
 
 ## Contents
 
