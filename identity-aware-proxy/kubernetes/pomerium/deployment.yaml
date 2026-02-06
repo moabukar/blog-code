@@ -1,0 +1,136 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pomerium
+  namespace: pomerium
+  labels:
+    app: pomerium
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: pomerium
+  template:
+    metadata:
+      labels:
+        app: pomerium
+    spec:
+      serviceAccountName: pomerium
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        fsGroup: 65532
+      containers:
+        - name: pomerium
+          image: pomerium/pomerium:v0.26.0
+          imagePullPolicy: IfNotPresent
+          args:
+            - --config=/etc/pomerium/config.yaml
+          env:
+            - name: IDP_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: pomerium-secrets
+                  key: idp-client-id
+            - name: IDP_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: pomerium-secrets
+                  key: idp-client-secret
+            - name: COOKIE_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: pomerium-secrets
+                  key: cookie-secret
+            - name: SHARED_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: pomerium-secrets
+                  key: shared-secret
+            # For Google Workspace group lookup
+            - name: IDP_SERVICE_ACCOUNT
+              value: /var/run/secrets/google/service-account.json
+          ports:
+            - name: https
+              containerPort: 443
+            - name: http
+              containerPort: 80
+            - name: metrics
+              containerPort: 9090
+          volumeMounts:
+            - name: config
+              mountPath: /etc/pomerium
+              readOnly: true
+            - name: google-sa
+              mountPath: /var/run/secrets/google
+              readOnly: true
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+          livenessProbe:
+            httpGet:
+              path: /ping
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /ping
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+      volumes:
+        - name: config
+          configMap:
+            name: pomerium-config
+        - name: google-sa
+          secret:
+            secretName: pomerium-google-sa
+            optional: true
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchLabels:
+                    app: pomerium
+                topologyKey: kubernetes.io/hostname
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: pomerium
+  namespace: pomerium
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: pomerium
+  namespace: pomerium
+  labels:
+    app: pomerium
+spec:
+  type: ClusterIP
+  ports:
+    - name: https
+      port: 443
+      targetPort: 443
+    - name: http
+      port: 80
+      targetPort: 80
+    - name: metrics
+      port: 9090
+      targetPort: 9090
+  selector:
+    app: pomerium

@@ -1,0 +1,35 @@
+# GCP IAP Configuration
+# Copy this file to terraform.tfvars and fill in your values
+
+project_id        = "your-project-id"
+region            = "europe-west2"
+app_name          = "internal-app"
+support_email     = "admin@company.com"
+application_title = "Internal Applications"
+
+# Backend configuration
+backend_port      = 8080
+health_check_path = "/health"
+backend_groups    = [
+  "projects/your-project/zones/europe-west2-a/instanceGroups/app-group"
+]
+
+# Access control
+allowed_users = [
+  "developer@company.com",
+  "admin@company.com"
+]
+
+allowed_groups = [
+  "engineering@company.com",
+  "platform-team@company.com"
+]
+
+# Allow entire domain (optional)
+# allowed_domain = "company.com"
+
+# SSL and networking
+ssl_certificate_ids = [
+  "projects/your-project/global/sslCertificates/your-cert"
+]
+static_ip_address = "34.120.x.x"

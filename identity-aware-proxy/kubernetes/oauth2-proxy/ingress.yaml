@@ -1,0 +1,63 @@
+# OAuth2-Proxy Ingress
+# This provides the authentication endpoint
+
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: oauth2-proxy
+  namespace: auth
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - oauth2.company.com
+      secretName: oauth2-proxy-tls
+  rules:
+    - host: oauth2.company.com
+      http:
+        paths:
+          - path: /oauth2
+            pathType: Prefix
+            backend:
+              service:
+                name: oauth2-proxy
+                port:
+                  number: 4180
+
+---
+# Example: Protected application ingress
+# Add these annotations to any ingress you want to protect
+
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: protected-app
+  namespace: default
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    # OAuth2-Proxy authentication
+    nginx.ingress.kubernetes.io/auth-url: "https://oauth2.company.com/oauth2/auth"
+    nginx.ingress.kubernetes.io/auth-signin: "https://oauth2.company.com/oauth2/start?rd=$escaped_request_uri"
+    # Pass identity headers to backend
+    nginx.ingress.kubernetes.io/auth-response-headers: "X-Auth-Request-User,X-Auth-Request-Email,X-Auth-Request-Groups,X-Auth-Request-Access-Token"
+    # Increase buffer size for auth headers
+    nginx.ingress.kubernetes.io/proxy-buffer-size: "16k"
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - app.company.com
+      secretName: app-tls
+  rules:
+    - host: app.company.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: app
+                port:
+                  number: 8080

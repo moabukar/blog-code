@@ -1,0 +1,92 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: pomerium-config
+  namespace: pomerium
+data:
+  config.yaml: |
+    # Pomerium Configuration
+    # ======================
+    
+    # Identity Provider
+    idp_provider: google
+    # For Okta: idp_provider: okta
+    # For Azure AD: idp_provider: azure
+    
+    # IdP-specific settings (uncomment for Okta)
+    # idp_provider_url: https://company.okta.com
+    
+    # Authentication service URL
+    authenticate_service_url: https://authenticate.company.com
+    
+    # Cookie settings
+    cookie_domain: company.com
+    cookie_secure: true
+    cookie_http_only: true
+    cookie_same_site: lax
+    
+    # Session settings
+    cookie_expire: 14h
+    
+    # Logging
+    log_level: info
+    
+    # Routes and policies
+    routes:
+      # Grafana - allow platform team and SREs
+      - from: https://grafana.company.com
+        to: http://grafana.monitoring.svc.cluster.local:3000
+        preserve_host_header: true
+        policy:
+          - allow:
+              or:
+                - groups:
+                    has: platform-team@company.com
+                - groups:
+                    has: sre@company.com
+                - email:
+                    is: admin@company.com
+      
+      # ArgoCD - allow engineering
+      - from: https://argocd.company.com
+        to: https://argocd-server.argocd.svc.cluster.local:443
+        tls_skip_verify: true
+        policy:
+          - allow:
+              or:
+                - groups:
+                    has: engineering@company.com
+      
+      # Kibana - allow engineering and SRE
+      - from: https://kibana.company.com
+        to: http://kibana.logging.svc.cluster.local:5601
+        preserve_host_header: true
+        policy:
+          - allow:
+              or:
+                - groups:
+                    has: engineering@company.com
+                - groups:
+                    has: sre@company.com
+      
+      # Internal API - allow by domain
+      - from: https://api-internal.company.com
+        to: http://api.default.svc.cluster.local:8080
+        policy:
+          - allow:
+              and:
+                - domain:
+                    is: company.com
+        # Pass identity headers to backend
+        pass_identity_headers: true
+      
+      # Admin panel - specific users only
+      - from: https://admin.company.com
+        to: http://admin-panel.default.svc.cluster.local:8080
+        policy:
+          - allow:
+              or:
+                - email:
+                    is: cto@company.com
+                - email:
+                    is: coo@company.com

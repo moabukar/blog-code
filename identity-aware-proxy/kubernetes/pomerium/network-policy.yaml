@@ -1,0 +1,35 @@
+# Network Policy to restrict backend access
+# ==========================================
+# Ensures backends only accept traffic from Pomerium
+
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-only-from-pomerium
+  namespace: default  # Apply to namespace with your backends
+spec:
+  podSelector:
+    matchLabels:
+      # Apply to pods that should only be accessed via IAP
+      iap-protected: "true"
+  policyTypes:
+    - Ingress
+  ingress:
+    # Only allow traffic from Pomerium namespace
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: pomerium
+          podSelector:
+            matchLabels:
+              app: pomerium
+
+---
+# Label the pomerium namespace for network policy matching
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: pomerium
+  labels:
+    kubernetes.io/metadata.name: pomerium
+    app.kubernetes.io/name: pomerium

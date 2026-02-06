@@ -1,0 +1,40 @@
+# AWS Cognito + ALB Configuration
+# Copy this file to terraform.tfvars and fill in your values
+
+region         = "eu-west-2"
+user_pool_name = "internal-apps"
+domain_prefix  = "internal-apps"
+mfa_enabled    = false
+
+# OAuth URLs
+callback_urls = [
+  "https://app.company.com/oauth2/idpresponse"
+]
+logout_urls = [
+  "https://app.company.com/logout"
+]
+
+# Federation with Okta (optional)
+enable_federation = false
+idp_provider_name = "Okta"
+saml_metadata_url = "https://company.okta.com/app/xxx/sso/saml/metadata"
+
+# ALB Configuration
+alb_name            = "internal-apps-alb"
+alb_security_groups = ["sg-xxxxxxxxx"]
+public_subnets      = ["subnet-aaaa", "subnet-bbbb", "subnet-cccc"]
+vpc_id              = "vpc-xxxxxxxxx"
+certificate_arn     = "arn:aws:acm:eu-west-2:123456789:certificate/xxxxx"
+
+# Backend
+backend_port      = 8080
+health_check_path = "/health"
+host_headers      = ["app.company.com"]
+session_timeout   = 3600
+
+# Tags
+tags = {
+  Environment = "production"
+  Team        = "platform"
+  ManagedBy   = "terraform"
+}
